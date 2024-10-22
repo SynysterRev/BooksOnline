@@ -6,7 +6,7 @@ from datetime import date
 from urllib.parse import urljoin
 
 # use to get the correct url for the images
-url = "https://books.toscrape.com/index.html"
+URL = "https://books.toscrape.com/index.html"
 
 # use to get the correct url for the books
 url_catalogue = "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
@@ -86,7 +86,7 @@ def transform_rating(book_info):
     book_info["rating"] += " stars"
 
 def transform_image_url(book_info):
-    absolute_url = urljoin(url, book_info["image_url"])
+    absolute_url = urljoin(URL, book_info["image_url"])
     book_info["image_url"] = absolute_url
 
 def convert_to_euros(price_sterling):
@@ -110,14 +110,12 @@ def load(books_info):
             writer.writerow(book.values())
 
 def main():
-    # url_catalogue = "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
     page = requests.get(url_catalogue)
 
     if page.ok:
         soup = BeautifulSoup(page.content, "html.parser")
         books_info = []
         extract_all_books_from_page(soup, books_info)
-        # while soup.find("li", class_="next"):
         next_page = soup.find("li", class_="next")
         while next_page :
             next_page_link = next_page.find("a").get("href")
