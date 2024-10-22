@@ -5,11 +5,7 @@ import requests
 from datetime import date
 from urllib.parse import urljoin
 
-# use to get the correct url for the images
 URL = "https://books.toscrape.com/index.html"
-
-# use to get the correct url for the books
-url_catalogue = "https://books.toscrape.com/catalogue/category/books/mystery_3/index.html"
 
 def extract_title_and_category(soup, book_info):
     link_list = soup.find("ul", class_="breadcrumb")
@@ -30,18 +26,21 @@ def extract_product_info(soup, book_info):
 def extract_rating(soup, book_info):
     review_rating_paragraph = soup.find("p", class_="star-rating")
     # string contains 2 parts "star-rating" and a number, [1] to only get the number
-    review_rating = review_rating_paragraph["class"][1]
-    book_info["rating"] = review_rating
+    if review_rating_paragraph:
+        review_rating = review_rating_paragraph["class"][1]
+        book_info["rating"] = review_rating
 
 def extract_description(soup, book_info):
     product_description = soup.find(id="product_description")
-    description = product_description.find_next("p")
-    book_info["product_description"] = description.string
+    if product_description:
+        description = product_description.find_next("p")
+        book_info["product_description"] = description.string if description else ""
 
 def extract_image(soup, book_info):
     image_div = soup.find("div", class_="item active")
-    image = image_div.find("img")
-    book_info["image_url"] = image.get("src")
+    if image_div:
+        image = image_div.find("img")
+        book_info["image_url"] = image.get("src") if image else ""
 
 def extract_all_info(soup, book_info):
     extract_title_and_category(soup, book_info)
@@ -50,10 +49,10 @@ def extract_all_info(soup, book_info):
     extract_rating(soup, book_info)
     extract_image(soup, book_info)
 
-def extract_all_books_from_page(soup, books_info):
+def extract_all_books_from_page(soup, books_info, current_category):
     for article in soup.find_all("article", class_="product_pod"):
         link_book = article.find("a")
-        absolute_url = urljoin(url_catalogue, link_book.get("href"))
+        absolute_url = urljoin(current_category, link_book.get("href"))
         current_page = requests.get(absolute_url)
         if current_page.ok:
             current_soup = BeautifulSoup(current_page.content, "html.parser")
@@ -93,15 +92,16 @@ def convert_to_euros(price_sterling):
     return str(round(float(price_sterling) * 1.15, 2)) + "€"
 
 def transform_to_euros(book_info):
+    # remove everything except digit
     price_excluding_tax_cleaned = ''.join(filter(lambda x: x.isdigit() or x == ".", book_info["price_excluding_tax"]))
     book_info["price_excluding_tax"] = convert_to_euros(price_excluding_tax_cleaned)
     price_including_tax_cleaned = ''.join(filter(lambda x: x.isdigit() or x == ".", book_info["price_including_tax"]))
     book_info["price_including_tax"] = convert_to_euros(price_including_tax_cleaned)
 
-def load(books_info):
+def load(books_info, category):
     today_date = date.today().strftime("%d-%m-%Y")
-    file_name = "books_to_scrape_info_" + today_date + ".csv"
-    with open(file_name, "w") as output_csv:
+    file_name = "books_to_scrape_info_" + category + "_" + today_date + ".csv"
+    with open(file_name, "w", encoding="utf-8-sig") as output_csv:
         writer = csv.writer(output_csv, lineterminator='\n')
         header = ["url", "title", "category", "description", "universal_product_code", "price_excluding_tax",
                   "price_including_tax", "number_available", "rating", "image_url"]
@@ -110,22 +110,43 @@ def load(books_info):
             writer.writerow(book.values())
 
 def main():
-    page = requests.get(url_catalogue)
-
+    page = requests.get(URL)
     if page.ok:
         soup = BeautifulSoup(page.content, "html.parser")
-        books_info = []
-        extract_all_books_from_page(soup, books_info)
-        next_page = soup.find("li", class_="next")
-        while next_page :
-            next_page_link = next_page.find("a").get("href")
-            new_url = urljoin(url_catalogue, next_page_link)
-            page = requests.get(new_url)
+        categories_div = soup.find("div", class_="side_categories")
+        books_info_per_categories = {}
+
+        for link in categories_div.find_all("a")[1:]:
+            # clean all spaces
+            category = link.string.strip()
+            category_link = urljoin(URL, link.get("href"))
+            # open category page
+            page = requests.get(category_link)
             if page.ok:
                 soup = BeautifulSoup(page.content, "html.parser")
-                extract_all_books_from_page(soup, books_info)
+                books_info = []
+                extract_all_books_from_page(soup, books_info, category_link)
+
+                # check if there is more than 1 page and loop
                 next_page = soup.find("li", class_="next")
-        load(books_info)
+                while next_page:
+                    next_page_link = next_page.find("a").get("href")
+                    new_url = urljoin(category_link, next_page_link)
+                    page = requests.get(new_url)
+                    if page.ok:
+                        soup = BeautifulSoup(page.content, "html.parser")
+                        extract_all_books_from_page(soup, books_info, category_link)
+                        next_page = soup.find("li", class_="next")
+                    else:
+                        print("Error : url " + new_url + " is not responding")
+                        break
+                books_info_per_categories[category] = books_info
+                load(books_info, category)
+            else:
+                print("Error : url " + category_link + " is not responding")
+                break
+    else:
+        print("Error : url " + URL + " is not responding")
 
 if __name__ == "__main__":
     main()
