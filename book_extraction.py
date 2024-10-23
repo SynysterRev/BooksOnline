@@ -104,8 +104,9 @@ def transform_to_euros(book_info):
 def load(books_info, category):
     today_date = date.today().strftime("%d-%m-%Y")
     directory_name = "Books/" + today_date + "/" + category.capitalize()
+    directory_image = directory_name + "/Images"
     try:
-        os.makedirs(directory_name, exist_ok=True)
+        os.makedirs(directory_image, exist_ok=True)
     except PermissionError:
         print(f"Permission denied: unable to create '{category}'.")
         return
@@ -122,12 +123,12 @@ def load(books_info, category):
         writer.writerow(header)
         for book in books_info:
             writer.writerow(book.values())
-            load_image(directory_name, book)
+            load_image(directory_image, book)
 
 def load_image(directory, book_info):
     extension = "." + book_info["image_url"].split(".")[-1]
     book_id = book_info["universal_product_code"]
-    path = directory + "/" + book_id + extension
+    path = directory + "/" + +book_id + extension
     with open(path, "wb") as file:
         file.write(requests.get(book_info["image_url"], timeout=5).content)
 
