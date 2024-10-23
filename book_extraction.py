@@ -12,8 +12,8 @@ URL = "https://books.toscrape.com/index.html"
 def extract_title_and_category(soup, book_info):
     link_list = soup.find("ul", class_="breadcrumb")
     text_list = link_list.find_all("li")
-    book_info["title"] = text_list[3].string
     book_info["category"] = text_list[2].find("a").string
+    book_info["title"] = text_list[3].string
 
 def extract_product_info(soup, book_info):
     table_product_info = soup.find("table", class_="table table-striped")
@@ -22,6 +22,7 @@ def extract_product_info(soup, book_info):
     book_info["price_excluding_tax"] = trs[2].find("td").string
     book_info["price_including_tax"] = trs[3].find("td").string
     available_string = trs[5].find("td").string
+    # only keep digit
     number_available = re.findall(r'\d+', available_string)
     book_info["number_available"] = number_available[0]
 
@@ -153,7 +154,6 @@ def main():
             category_link = urljoin(URL, link.get("href"))
             # open category page
             page = requests.get(category_link)
-            print("open category")
             if page.ok:
                 soup = BeautifulSoup(page.content, "html.parser")
                 books_info = []
