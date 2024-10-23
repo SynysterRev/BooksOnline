@@ -102,7 +102,8 @@ def transform_to_euros(book_info):
     book_info["price_including_tax"] = convert_to_euros(price_including_tax_cleaned)
 
 def load(books_info, category):
-    directory_name = category.capitalize()
+    today_date = date.today().strftime("%d-%m-%Y")
+    directory_name = "Books/" + today_date + "/" + category.capitalize()
     try:
         os.makedirs(directory_name, exist_ok=True)
     except PermissionError:
@@ -111,9 +112,10 @@ def load(books_info, category):
     except Exception as e:
         print(f"An error occurred: {e}")
         return
-    today_date = date.today().strftime("%d-%m-%Y")
-    file_name = directory_name + "/books_to_scrape_info_" + category + "_" + today_date + ".csv"
-    with open(file_name, "w", encoding="utf-8-sig") as output_csv:
+
+    # exemple : Books/23-10-2024/Poetry/Poetry_23-10-2024.csv
+    path = directory_name + "/" + category + "_" + today_date + ".csv"
+    with open(path, "w", encoding="utf-8-sig") as output_csv:
         writer = csv.writer(output_csv, lineterminator='\n')
         header = ["url", "title", "category", "description", "universal_product_code", "price_excluding_tax",
                   "price_including_tax", "number_available", "rating", "image_url"]
