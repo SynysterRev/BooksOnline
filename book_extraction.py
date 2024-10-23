@@ -1,5 +1,7 @@
 import csv
+import os
 import re
+
 from bs4 import BeautifulSoup
 import requests
 from datetime import date
@@ -99,8 +101,18 @@ def transform_to_euros(book_info):
     book_info["price_including_tax"] = convert_to_euros(price_including_tax_cleaned)
 
 def load(books_info, category):
+    directory_name = category.capitalize()
+    try:
+        os.mkdir(directory_name)
+    except PermissionError:
+        print(f"Permission denied: unable to create '{category}'.")
+        return
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return
+
     today_date = date.today().strftime("%d-%m-%Y")
-    file_name = "books_to_scrape_info_" + category + "_" + today_date + ".csv"
+    file_name = directory_name + "/books_to_scrape_info_" + category + "_" + today_date + ".csv"
     with open(file_name, "w", encoding="utf-8-sig") as output_csv:
         writer = csv.writer(output_csv, lineterminator='\n')
         header = ["url", "title", "category", "description", "universal_product_code", "price_excluding_tax",
@@ -108,6 +120,27 @@ def load(books_info, category):
         writer.writerow(header)
         for book in books_info:
             writer.writerow(book.values())
+            load_image(directory_name, book)
+
+def load_image(directory, book_info):
+    extension = "." + book_info["image_url"].split(".")[-1]
+    book_id = book_info["universal_product_code"]
+    path = directory + "/" + book_id + extension
+    with open(path, "wb") as file:
+        file.write(requests.get(book_info["image_url"], timeout=5).content)
+
+# def clean_image_name(book_name):
+#     nb_rep_left = 1
+#     # remove everything between two parenthesis until nb_rep_left = 0
+#     while nb_rep_left:
+#         (book_name, nb_rep_left) = re.subn(r"\([^()]*\)", "", book_name)
+#     # remove everything except letters and numbers
+#     book_name = re.sub(r"[^a-zA-Z1-9]", "_", book_name)
+#     # remove multiples _
+#     book_name = re.sub(r"_{2,}", "_", book_name)
+#     # remove _ if it's the last character
+#     return re.sub(r"_$", "", book_name)
+
 
 def main():
     page = requests.get(URL)
