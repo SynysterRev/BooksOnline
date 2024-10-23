@@ -103,14 +103,13 @@ def transform_to_euros(book_info):
 def load(books_info, category):
     directory_name = category.capitalize()
     try:
-        os.mkdir(directory_name)
+        os.makedirs(directory_name, exist_ok=True)
     except PermissionError:
         print(f"Permission denied: unable to create '{category}'.")
         return
     except Exception as e:
         print(f"An error occurred: {e}")
         return
-
     today_date = date.today().strftime("%d-%m-%Y")
     file_name = directory_name + "/books_to_scrape_info_" + category + "_" + today_date + ".csv"
     with open(file_name, "w", encoding="utf-8-sig") as output_csv:
@@ -147,7 +146,6 @@ def main():
     if page.ok:
         soup = BeautifulSoup(page.content, "html.parser")
         categories_div = soup.find("div", class_="side_categories")
-        books_info_per_categories = {}
 
         for link in categories_div.find_all("a")[1:]:
             # clean all spaces
@@ -155,6 +153,7 @@ def main():
             category_link = urljoin(URL, link.get("href"))
             # open category page
             page = requests.get(category_link)
+            print("open category")
             if page.ok:
                 soup = BeautifulSoup(page.content, "html.parser")
                 books_info = []
@@ -173,7 +172,6 @@ def main():
                     else:
                         print("Error : url " + new_url + " is not responding")
                         break
-                books_info_per_categories[category] = books_info
                 load(books_info, category)
             else:
                 print("Error : url " + category_link + " is not responding")
