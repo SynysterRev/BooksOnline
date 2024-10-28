@@ -1,4 +1,6 @@
 # BooksOnline
+
+Version python utilisée : 3.12.6
  
 # Installer le projet
 ## Invite de commande
