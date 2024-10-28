@@ -67,7 +67,6 @@ def extract_all_books_from_page(soup, books_info, current_category):
 def transform(book_info):
     transform_rating(book_info)
     transform_image_url(book_info)
-    transform_to_euros(book_info)
 
 def transform_rating(book_info):
     match book_info["rating"]:
@@ -91,16 +90,6 @@ def transform_image_url(book_info):
     absolute_url = urljoin(URL, book_info["image_url"])
     book_info["image_url"] = absolute_url
 
-def convert_to_euros(price_sterling):
-    return str(round(float(price_sterling) * 1.15, 2)) + "€"
-
-def transform_to_euros(book_info):
-    # remove everything except digit
-    price_excluding_tax_cleaned = ''.join(filter(lambda x: x.isdigit() or x == ".", book_info["price_excluding_tax"]))
-    book_info["price_excluding_tax"] = convert_to_euros(price_excluding_tax_cleaned)
-    price_including_tax_cleaned = ''.join(filter(lambda x: x.isdigit() or x == ".", book_info["price_including_tax"]))
-    book_info["price_including_tax"] = convert_to_euros(price_including_tax_cleaned)
-
 def load(books_info, category):
     today_date = date.today().strftime("%d-%m-%Y")
     directory_name = "Books/" + today_date + "/" + category.capitalize()
@@ -118,7 +107,7 @@ def load(books_info, category):
     path = directory_name + "/" + category + "_" + today_date + ".csv"
     with open(path, "w", encoding="utf-8-sig") as output_csv:
         writer = csv.writer(output_csv, lineterminator='\n')
-        header = ["url", "title", "category", "description", "universal_product_code", "price_excluding_tax",
+        header = ["url", "category", "title", "description", "universal_product_code", "price_excluding_tax",
                   "price_including_tax", "number_available", "rating", "image_url"]
         writer.writerow(header)
         for book in books_info:
@@ -128,22 +117,9 @@ def load(books_info, category):
 def load_image(directory, book_info):
     extension = "." + book_info["image_url"].split(".")[-1]
     book_id = book_info["universal_product_code"]
-    path = directory + "/" + +book_id + extension
+    path = directory + "/" + book_id + extension
     with open(path, "wb") as file:
         file.write(requests.get(book_info["image_url"], timeout=5).content)
-
-# def clean_image_name(book_name):
-#     nb_rep_left = 1
-#     # remove everything between two parenthesis until nb_rep_left = 0
-#     while nb_rep_left:
-#         (book_name, nb_rep_left) = re.subn(r"\([^()]*\)", "", book_name)
-#     # remove everything except letters and numbers
-#     book_name = re.sub(r"[^a-zA-Z1-9]", "_", book_name)
-#     # remove multiples _
-#     book_name = re.sub(r"_{2,}", "_", book_name)
-#     # remove _ if it's the last character
-#     return re.sub(r"_$", "", book_name)
-
 
 def main():
     page = requests.get(URL)
