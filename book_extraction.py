@@ -9,22 +9,36 @@ from urllib.parse import urljoin
 
 URL = "https://books.toscrape.com/index.html"
 
+#region Extract
+
 def extract_title_and_category(soup, book_info):
     link_list = soup.find("ul", class_="breadcrumb")
     text_list = link_list.find_all("li")
-    book_info["category"] = text_list[2].find("a").string
-    book_info["title"] = text_list[3].string
+    if len(text_list) > 2:
+        category = text_list[2].find("a")
+        book_info["category"] = category.string if category else ""
+    if len(text_list) > 3:
+        title = text_list[3]
+        book_info["title"] = title.string if title else ""
 
 def extract_product_info(soup, book_info):
     table_product_info = soup.find("table", class_="table table-striped")
     trs = table_product_info.find_all("tr")
-    book_info["universal_product_code"] = trs[0].find("td").string
-    book_info["price_excluding_tax"] = trs[2].find("td").string
-    book_info["price_including_tax"] = trs[3].find("td").string
-    available_string = trs[5].find("td").string
-    # only keep digit
-    number_available = re.findall(r'\d+', available_string)
-    book_info["number_available"] = number_available[0]
+    if len(trs) > 0:
+        upc = trs[0].find("td")
+        book_info["universal_product_code"] = upc.string if upc else ""
+    if len(trs) > 2:
+        price_excluding_tax = trs[2].find("td")
+        book_info["price_excluding_tax"] = price_excluding_tax.string if price_excluding_tax else ""
+    if len(trs) > 3:
+        price_including_tax = trs[3].find("td")
+        book_info["price_including_tax"] = price_including_tax.string if price_including_tax else ""
+    if len(trs) > 5:
+        available = trs[5].find("td")
+        available_string = available.string if available else ""
+        # only keep digit
+        number_available = re.findall(r'\d+', available_string)
+        book_info["number_available"] = number_available[0]
 
 def extract_rating(soup, book_info):
     review_rating_paragraph = soup.find("p", class_="star-rating")
@@ -64,6 +78,10 @@ def extract_all_books_from_page(soup, books_info, current_category):
             transform(current_book)
             books_info.append(current_book)
 
+#endregion
+
+#region Transform
+
 def transform(book_info):
     transform_rating(book_info)
     transform_image_url(book_info)
@@ -89,6 +107,10 @@ def transform_rating(book_info):
 def transform_image_url(book_info):
     absolute_url = urljoin(URL, book_info["image_url"])
     book_info["image_url"] = absolute_url
+
+#endregion
+
+#region Load
 
 def load(books_info, category):
     today_date = date.today().strftime("%d-%m-%Y")
@@ -120,6 +142,8 @@ def load_image(directory, book_info):
     path = directory + "/" + book_id + extension
     with open(path, "wb") as file:
         file.write(requests.get(book_info["image_url"], timeout=5).content)
+
+#endregion
 
 def main():
     page = requests.get(URL)
